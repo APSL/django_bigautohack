@@ -1,6 +1,18 @@
+from distutils.version import StrictVersion
+
+import django
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
-from django.db.models.loading import get_model
+
+# Support Django 1.5
+if StrictVersion(django.get_version()) < StrictVersion('1.6'):
+    from django.db.models.loading import get_model as _get_model_15
+    def get_model(model_path):
+        return _get_model_15(*model_path.split('.'))
+    atomic = transaction.commit_on_success
+else:
+    from django.db.models.loading import get_model
+    atomic = transaction.atomic
 
 
 class Command(BaseCommand):
@@ -31,7 +43,7 @@ Nice working solution before this gets properly resolved: https://code.djangopro
         else:
             raise NotImplemented
 
-    @transaction.atomic()
+    @atomic()
     def handle(self, *args, **options):
         cursor = connection.cursor()
         for model_path in args:
